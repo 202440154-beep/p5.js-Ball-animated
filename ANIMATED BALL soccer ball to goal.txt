@@ -1,0 +1,143 @@
+// ANIMATED BALL: soccer ball to goal post
+const START_X = 300; // penalty spot
+const START_Y = 430;
+
+let t = 0;           // kick progress: 0 (at foot) to 1 (in the net)
+let timer = 0;       // frame counter for waiting between kicks
+let state = "wait";  // "wait", "fly", or "goal"
+let targetX = 300;   // where in the goal the ball will land
+let targetY = 170;
+let spin = 0;
+
+function setup() {
+  createCanvas(600, 500);
+}
+
+function draw() {
+  background(120, 190, 255);
+
+  // Same function, three different positions and sizes.
+  // Each cloud drifts across the sk.
+  drawCloud((frameCount * 0.3 + 80) % (width + 200) - 100, 70, 1.2);
+  drawCloud((frameCount * 0.2 + 300) % (width + 200) - 100, 110, 0.8);
+  drawCloud((frameCount * 0.6 + 450) % (width + 200) - 100, 50, 1.0);
+
+  drawGrass();
+  drawGoal(150, 110, 300, 130);
+  updateBall();
+}
+
+// Draws one fluffy cloud; x, y is the centre and size scales it.
+function drawCloud(x, y, size) {
+  const puff = size * 30; // local variable: width of one puff
+  noStroke();
+  fill(255);
+  ellipse(x, y, puff * 2, puff);
+  ellipse(x - puff * 0.7, y + puff * 0.1, puff * 1.4, puff * 0.9);
+  ellipse(x + puff * 0.7, y + puff * 0.1, puff * 1.5, puff * 0.9);
+}
+
+// Draws the green field below the horizon.
+function drawGrass() {
+  noStroke();
+  fill(60, 160, 70);
+  rect(0, 240, width, height - 240);
+  fill(255);
+  ellipse(START_X, START_Y + 18, 12, 6); // penalty spot
+}
+
+// Draws the goal: a net grid plus white posts and crossbar.
+// x, y is the top-left corner; w and h are the goal's width and height.
+function drawGoal(x, y, w, h) {
+  stroke(255, 255, 255);
+  strokeWeight(1);
+  for (let i = 0; i <= w; i += 15) line(x + i, y, x + i, y + h);
+  for (let j = 0; j <= h; j += 15) line(x, y + j, x + w, y + j);
+
+  stroke(255);
+  strokeWeight(8);
+  line(x, y + h, x, y);
+  line(x, y, x + w, y);
+  line(x + w, y, x + w, y + h);
+}
+
+// Draws a soccer ball with a spinning pentagon pattern;
+// x, y is the centre, d is the diameter, angle is the spin.
+function drawBall(x, y, d, angle) {
+  push();
+  translate(x, y);
+  rotate(angle);
+  stroke(30);
+  strokeWeight(1.5);
+  fill(255);
+  circle(0, 0, d);
+
+  const r = d * 0.22; // local variable: size of the centre pentagon
+  fill(25);
+  beginShape();
+  for (let k = 0; k < 5; k++) {
+    const a = (TWO_PI * k) / 5 - HALF_PI;
+    vertex(cos(a) * r, sin(a) * r);
+  }
+  endShape(CLOSE);
+  for (let k = 0; k < 5; k++) {
+    const a = (TWO_PI * k) / 5 - HALF_PI;
+    circle(cos(a) * d * 0.4, sin(a) * d * 0.4, d * 0.14);
+  }
+  pop();
+}
+
+// CALCULATES AND RETURNS the ball's diameter: it gets smaller
+// as it travels away toward the goal.
+function calcDiameter(progress) {
+  return lerp(50, 24, progress);
+}
+
+// CALCULATES AND RETURNS the height of the ball's arc:
+// zero at the start and end, highest halfway through the kick.
+function calcArc(progress) {
+  return -sin(PI * progress) * 90;
+}
+
+// Runs the automatic kick cycle (wait, fly, goal) and draws the ball.
+function updateBall() {
+  timer++;
+
+  if (state === "wait" && timer > 60) {
+    // Pick a random spot inside the goal, then kick
+    targetX = random(180, 420);
+    targetY = random(140, 220);
+    state = "fly";
+  } else if (state === "fly") {
+    t += 0.02;
+    spin += 0.25;
+    if (t >= 1) {
+      t = 1;
+      state = "goal";
+      timer = 0;
+    }
+  } else if (state === "goal" && timer > 90) {
+    t = 0;
+    spin = 0;
+    state = "wait";
+    timer = 0;
+  }
+
+  const x = lerp(START_X, targetX, t);
+  const groundY = lerp(START_Y, targetY, t);
+  const d = calcDiameter(t);
+
+  noStroke();
+  fill(0, 0, 0, 60);
+  ellipse(x, groundY + d * 0.5, d * 1.1, d * 0.3); // shadow
+  drawBall(x, groundY + calcArc(t), d, spin);
+
+  if (state == "goal") {
+    textAlign(CENTER, CENTER);
+    textSize(64);
+    stroke(0);
+    strokeWeight(6);
+    fill(255, 230, 50);
+    text("GOAL!", width / 2, 330);
+  }
+}
